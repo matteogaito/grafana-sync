@@ -16,7 +16,7 @@ limitations under the License.
 package main
 
 import (
-	"github.com/mpostument/grafana-sync/cmd"
+	"github.com/matteogaito/grafana-sync/cmd"
 )
 
 func main() {
