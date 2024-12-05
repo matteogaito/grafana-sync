@@ -22,7 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/mpostument/grafana-sync/grafana"
+	"github.com/matteogaito/grafana-sync/grafana"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
