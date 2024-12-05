@@ -1,4 +1,4 @@
-module grafana
+module github.com/matteogaito/grafana-sync/grafana
 
 go 1.23.3
 
