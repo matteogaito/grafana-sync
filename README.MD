@@ -31,34 +31,34 @@ Or use docker image from [github registry](https://github.com/mpostument/grafana
 
 ```shell
 # Save all dashboards to directory
-grafana-sync pull-dashboards --apikey="eyJrIjoiOWJYTktGNFlCbFVMOG1LY3d6ekN4Mmw4MFgyYU44a1UiLCJuIjoiY29icmEiLCJpZCI6MX0=" --directory="dashboards" --url http://127.0.0.1:3000
+grafana-sync --action=pull-dashboards --apikey="eyJrIjoiOWJYTktGNFlCbFVMOG1LY3d6ekN4Mmw4MFgyYU44a1UiLCJuIjoiY29icmEiLCJpZCI6MX0=" --directory="dashboards" --url http://127.0.0.1:3000
 
 # Save all dashboards from specific folder to local directory using folder name
-grafana-sync pull-dashboards --apikey="eyJrIjoiOWJYTktGNFlCbFVMOG1LY3d6ekN4Mmw4MFgyYU44a1UiLCJuIjoiY29icmEiLCJpZCI6MX0=" --directory="dashboards" --url http://127.0.0.1:3000 --folderName="TestFolder"
+grafana-sync --action=pull-dashboards --apikey="eyJrIjoiOWJYTktGNFlCbFVMOG1LY3d6ekN4Mmw4MFgyYU44a1UiLCJuIjoiY29icmEiLCJpZCI6MX0=" --directory="dashboards" --url http://127.0.0.1:3000 --folderName="TestFolder"
 
 # Save all dashboards from specific folder to local directory using folder id
-grafana-sync pull-dashboards --apikey="eyJrIjoiOWJYTktGNFlCbFVMOG1LY3d6ekN4Mmw4MFgyYU44a1UiLCJuIjoiY29icmEiLCJpZCI6MX0=" --directory="dashboards" --url http://127.0.0.1:3000 --folderId=1
+grafana-sync --action=pull-dashboards --apikey="eyJrIjoiOWJYTktGNFlCbFVMOG1LY3d6ekN4Mmw4MFgyYU44a1UiLCJuIjoiY29icmEiLCJpZCI6MX0=" --directory="dashboards" --url http://127.0.0.1:3000 --folderId=1
 
 # Save dashboards with specific tags to directory
-grafana-sync pull-dashboards --apikey="eyJrIjoiOWJYTktGNFlCbFVMOG1LY3d6ekN4Mmw4MFgyYU44a1UiLCJuIjoiY29icmEiLCJpZCI6MX0=" --directory="dashboards" --url http://127.0.0.1:3000 --tag=export
+grafana-sync --action=pull-dashboards --apikey="eyJrIjoiOWJYTktGNFlCbFVMOG1LY3d6ekN4Mmw4MFgyYU44a1UiLCJuIjoiY29icmEiLCJpZCI6MX0=" --directory="dashboards" --url http://127.0.0.1:3000 --tag=export
 ```
 
 ### Pull folder
 
 ```shell
-grafana-sync pull-folders --apikey="eyJrIjoiOWJYTktGNFlCbFVMOG1LY3d6ekN4Mmw4MFgyYU44a1UiLCJuIjoiY29icmEiLCJpZCI6MX0=" --directory="folders" --url http://127.0.0.1:3000
+grafana-sync --action=pull-folders --apikey="eyJrIjoiOWJYTktGNFlCbFVMOG1LY3d6ekN4Mmw4MFgyYU44a1UiLCJuIjoiY29icmEiLCJpZCI6MX0=" --directory="folders" --url http://127.0.0.1:3000
 ```
 
 ### Pull notifications
 
 ```shell
-grafana-sync pull-notifications --apikey="eyJrIjoiOWJYTktGNFlCbFVMOG1LY3d6ekN4Mmw4MFgyYU44a1UiLCJuIjoiY29icmEiLCJpZCI6MX0=" --directory="notifications" --url http://127.0.0.1:3000
+grafana-sync --action=pull-notifications --apikey="eyJrIjoiOWJYTktGNFlCbFVMOG1LY3d6ekN4Mmw4MFgyYU44a1UiLCJuIjoiY29icmEiLCJpZCI6MX0=" --directory="notifications" --url http://127.0.0.1:3000
 ```
 
 ### Pull datasources
 
 ```shell
-grafana-sync pull-datasources --apikey="eyJrIjoiOWJYTktGNFlCbFVMOG1LY3d6ekN4Mmw4MFgyYU44a1UiLCJuIjoiY29icmEiLCJpZCI6MX0=" --directory="datasources" --url http://127.0.0.1:3000
+grafana-sync --action=pull-datasources --apikey="eyJrIjoiOWJYTktGNFlCbFVMOG1LY3d6ekN4Mmw4MFgyYU44a1UiLCJuIjoiY29icmEiLCJpZCI6MX0=" --directory="datasources" --url http://127.0.0.1:3000
 ```
 
 ### Push dashboards
