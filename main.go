@@ -9,6 +9,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"context"
+	"log"
+
+	"github.com/grafana-tools/sdk"
 )
 
 var (
@@ -17,6 +21,7 @@ var (
 	directory string
 	action    string
 	folder    string
+	client    *sdk.Client
 )
 
 func init() {
@@ -33,6 +38,11 @@ func main() {
 	if apiKey == "" || baseURL == "" {
 		fmt.Println("Error: apikey and url are required")
 		os.Exit(1)
+	}
+
+	client, _ = sdk.NewClient(baseURL, apiKey, sdk.DefaultHTTPClient)
+	if client == nil {
+		log.Fatalf("Error: failed to initialize Grafana client")
 	}
 
 	switch action {
@@ -62,27 +72,22 @@ func main() {
 	}
 }
 
-func getFolderID(folderName string) string {
-	fmt.Printf("Fetching folder ID for: %s\n", folderName)
-	url := fmt.Sprintf("%s/api/folders", baseURL)
-	data := sendRequest("GET", url, nil)
-
-	var folders []map[string]interface{}
-	err := json.Unmarshal(data, &folders)
+// Helper to get folder ID by name
+func getFolderID(folderName string) int {
+	ctx := context.Background()
+	folders, err := client.GetAllFolders(ctx)
 	if err != nil {
-		fmt.Println("Error unmarshalling folders:", err)
-		os.Exit(1)
+		log.Fatalf("Error fetching folders: %v", err)
 	}
 
-	for _, folder := range folders {
-		if folder["title"] == folderName {
-			return fmt.Sprintf("%v", folder["id"])
+	for _, f := range folders {
+		if f.Title == folderName {
+			return f.ID
 		}
 	}
 
-	fmt.Printf("Error: folder '%s' not found\n", folderName)
-	os.Exit(1)
-	return ""
+	log.Fatalf("Folder not found: %s", folderName)
+	return 0
 }
 
 // Pull all data from Grafana
@@ -105,31 +110,63 @@ func pushData() {
 
 func pullDashboards() {
 	fmt.Println("Pulling dashboards...")
-	url := fmt.Sprintf("%s/api/search?type=dash-db", baseURL)
+	ctx := context.Background()
+
+	searchParams := []sdk.SearchParam{sdk.SearchType(sdk.SearchTypeDashboard)}
 	if folder != "" {
-		url += fmt.Sprintf("&folderIds=%s", getFolderID(folder))
+		folderID := getFolderID(folder)
+		searchParams = append(searchParams, sdk.SearchFolderID(int(folderID)))
 	}
-	data := sendRequest("GET", url, nil)
-	var dashboards []map[string]interface{}
-	err := json.Unmarshal(data, &dashboards)
+
+	// Search for dashboards using the client
+	dashboards, err := client.Search(ctx, searchParams...)
 	if err != nil {
-		fmt.Println("Error unmarshalling dashboards:", err)
-		return
+		log.Fatalf("Error searching dashboards: %v", err)
 	}
 
+	// Create local directory for dashboards
 	dashboardDir := filepath.Join(directory, "dashboards")
-	os.MkdirAll(dashboardDir, os.ModePerm)
+	if err := os.MkdirAll(dashboardDir, os.ModePerm); err != nil {
+		log.Fatalf("Error creating directory: %v", err)
+	}
 
+	// Iterate through dashboards and save them locally
 	for _, db := range dashboards {
-		uid := db["uid"].(string)
-		title := db["title"].(string)
-		dashboardData := downloadDashboard(uid)
-		err := saveToFile(filepath.Join(dashboardDir, title+".json"), dashboardData)
+		if db.Type != "dash-db" {
+			continue // Skip non-dashboard entries
+		}
+
+		// Fetch the full dashboard using UID
+		board, meta, err := client.GetDashboardByUID(ctx, db.UID)
 		if err != nil {
-			fmt.Printf("Error saving dashboard %s: %v\n", title, err)
+			log.Printf("Error fetching dashboard UID %s: %v", db.UID, err)
 			continue
 		}
-		fmt.Printf("Saved dashboard: %s\n", title)
+
+		// Ensure the dashboard has a title
+		if board.Title == "" {
+			log.Printf("Error: dashboard UID %s has no title", db.UID)
+			continue
+		}
+
+		// removing uniq identifier
+		board.ID = 0
+		fmt.Println(board.ID)
+
+		// Save the dashboard as a JSON file
+		filePath := filepath.Join(dashboardDir, meta.Slug+".json")
+		data, err := json.MarshalIndent(board, "", "  ")
+		if err != nil {
+			log.Printf("Error marshaling dashboard UID %s: %v", db.UID, err)
+			continue
+		}
+
+		if err := os.WriteFile(filePath, data, 0644); err != nil {
+			log.Printf("Error saving dashboard UID %s: %v", db.UID, err)
+			continue
+		}
+
+		fmt.Printf("Saved dashboard: %s\n", filePath)
 	}
 }
 
@@ -182,45 +219,52 @@ func pullNotificationChannels() {
 
 func pushDashboards() {
 	fmt.Println("Pushing dashboards...")
-	dashboardDir := filepath.Join(directory, "dashboards")
-	files, _ := ioutil.ReadDir(dashboardDir)
+	ctx := context.Background()
 
-	var folderID string
-	if folder != "" {
-		folderID = getFolderID(folder)
+	// Read the local dashboards directory
+	dashboardDir := filepath.Join(directory, "dashboards")
+	files, err := os.ReadDir(dashboardDir)
+	if err != nil {
+		log.Fatalf("Error reading dashboard directory: %v", err)
 	}
 
+	// Get folder ID if a folder is specified
+	var folderID int
+	if folder != "" {
+		folderID = getFolderID(folder)
+		fmt.Printf("Using folder ID: %d for dashboards\n", folderID)
+	}
+
+	// Iterate through dashboard files
 	for _, file := range files {
 		if filepath.Ext(file.Name()) == ".json" {
-			data, err := ioutil.ReadFile(filepath.Join(dashboardDir, file.Name()))
+			filePath := filepath.Join(dashboardDir, file.Name())
+			data, err := os.ReadFile(filePath)
 			if err != nil {
-				fmt.Printf("Error reading dashboard file %s: %v\n", file.Name(), err)
+				log.Printf("Error reading file %s: %v", file.Name(), err)
 				continue
 			}
 
-			var dashboard map[string]interface{}
-			err = json.Unmarshal(data, &dashboard)
-			if err != nil {
-				fmt.Printf("Error unmarshalling dashboard %s: %v\n", file.Name(), err)
+			// Unmarshal the JSON into a Board struct
+			var dashboard sdk.Board
+			if err := json.Unmarshal(data, &dashboard); err != nil {
+				log.Printf("Error unmarshalling file %s: %v", file.Name(), err)
 				continue
 			}
 
-			// Associa il dashboard alla cartella, se specificata
-			if folderID != "" {
-				if dashboard["folderId"] == nil || dashboard["folderId"] == 0 {
-					dashboard["folderId"] = folderID
-				}
+			params := sdk.SetDashboardParams{
+				FolderID:  folderID,
+				Overwrite: true,      // Enable overwriting existing dashboards
 			}
 
-			// Imposta il payload per Grafana
-			payload := map[string]interface{}{
-				"dashboard": dashboard,
-				"overwrite": true, // Sovrascrive il dashboard esistente
+			// Push the dashboard to Grafana
+			fmt.Printf("Pushing dashboard %s - %s in %d\n", dashboard.Title, dashboard.UID, folderID)
+			_, err = client.SetDashboard(ctx, dashboard, params)
+			if err != nil {
+				log.Printf("Error pushing dashboard %s: %v", file.Name(), err)
+				continue
 			}
-			payloadData, _ := json.Marshal(payload)
 
-			url := fmt.Sprintf("%s/api/dashboards/db", baseURL)
-			sendRequest("POST", url, payloadData)
 			fmt.Printf("Uploaded dashboard: %s\n", file.Name())
 		}
 	}
