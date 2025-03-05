@@ -1,6 +1,6 @@
 module github.com/mpostument/grafana-sync
 
-go 1.23.3
+go 1.23.7
 
 require (
 	github.com/grafana-tools/sdk v0.0.0-20220919052116-6562121319fc
